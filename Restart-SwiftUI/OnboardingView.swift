@@ -9,17 +9,26 @@ import SwiftUI
 
 struct OnboardingView: View {
     // MARK: - PROPERTY
+    
     @AppStorage("onboarding") var isOnboardingActive: Bool = true
+    
+    @State private var buttonWidth: Double = UIScreen.main.bounds.width - 80
+    
+    @State private var buttonOffset:CGFloat = 0
+    
+    @State private var isAnimating: Bool = false
+    
+    let hapticFeedback = UINotificationFeedbackGenerator()
     
     var body: some View {
         ZStack {
             
             Color("ColorBlue")
                 .ignoresSafeArea(.all,edges: .all)
-                
+            
             
             VStack(spacing:20) {
-              //MARK: - HEADER
+                //MARK: - HEADER
                 Spacer()
                 VStack(){
                     Text("Share.")
@@ -37,6 +46,9 @@ struct OnboardingView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal,10)
                 }
+                .opacity(isAnimating ? 1 : 0)
+                .offset(y: isAnimating ? 0 : -40)
+                .animation(.easeOut(duration: 1),value: isAnimating)
                 
                 //MARK: - CENTER
                 ZStack() {
@@ -46,6 +58,8 @@ struct OnboardingView: View {
                     Image("character-1")
                         .resizable()
                         .scaledToFit()
+                        .opacity(isAnimating ? 1 : 0)
+                        .animation(.easeOut(duration: 0.5), value: isAnimating)
                     
                 }
                 
@@ -74,7 +88,7 @@ struct OnboardingView: View {
                     HStack{
                         Capsule()
                             .fill(Color("ColorRed"))
-                            .frame(width: 80)
+                            .frame(width: buttonOffset + 80)
                         Spacer()
                     }
                     
@@ -92,23 +106,52 @@ struct OnboardingView: View {
                                 .font(.system(size: 24,weight: .bold))
                         }
                         .foregroundStyle(.white)
-                    .frame(width: 80,height: 80,alignment: .center)
-                    .onTapGesture {
-                        isOnboardingActive = false
-                    }
+                        .frame(width: 80,height: 80,alignment: .center)
+                        .offset(x:buttonOffset)
+                        .gesture(
+                            DragGesture()
+                                .onChanged({gesture in
+                                    if gesture.translation.width > 0 && buttonOffset <= buttonWidth - 80 {
+                                        buttonOffset = gesture.translation.width
+                                    }
+                                    
+                                }
+                                          ).onEnded({_ in
+                                              withAnimation(Animation.easeInOut(duration: 0.4)){
+                                                  if buttonOffset > buttonWidth/2 {
+                                                      hapticFeedback.notificationOccurred(.success)
+                                                      playSound(sound: "chimeup", type: "mp3")
+                                                      buttonOffset = buttonWidth - 80
+                                                      isOnboardingActive = false
+                                                      
+                                                  }
+                                                  else{
+                                                      hapticFeedback.notificationOccurred(.warning)
+                                                      buttonOffset = 0
+                                                  }
+                                              }
+                                              
+                                          })
+                        )
                         
                         Spacer()
                     }
                     
                     
                 }//: FOOTER
-                .frame(height: 80,alignment: .center)
+                .frame(width: buttonWidth,height: 80,alignment: .center)
                 .padding()
-             
+                .opacity(isAnimating ? 1 : 0)
+                .offset(y: isAnimating ? 0 : 40)
+                .animation(.easeOut(duration: 1),value: isAnimating )
+                
                 
                 
             }//: VSTACK
         }//: ZSTACK
+        .onAppear(perform: {
+            isAnimating = true
+        })
     }
 }
 
